@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>My Projects — Otter Robotics</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+
+  <!-- Firebase compat SDK -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+
+  <script>
+    firebase.initializeApp({
+      apiKey:            "AIzaSyCutLrtPRtwRmMSwOwcfyPIyky4TAoc6Po",
+      authDomain:        "otterroboticsweb.firebaseapp.com",
+      projectId:         "otterroboticsweb",
+      storageBucket:     "otterroboticsweb.firebasestorage.app",
+      messagingSenderId: "874362914334",
+      appId:             "1:874362914334:web:fa40b8ac0b05476a9d500f"
+    });
+
+    var auth = firebase.auth();
+    var db   = firebase.firestore();
+
+    var currentUid = null;
+    var pendingDeleteId = null;
+
+    auth.onAuthStateChanged(function(user) {
+      if (!user) { window.location.href = 'login.html'; return; }
+      currentUid = user.uid;
+      loadProjects();
+    });
+
+    function loadProjects() {
+      var grid  = document.getElementById('projectGrid');
+      var empty = document.getElementById('emptyState');
+      grid.innerHTML = '';
+
+      db.collection('users').doc(currentUid).collection('projects')
+        .orderBy('updatedAt', 'desc')
+        .get()
+        .then(function(snap) {
+          if (snap.empty) { empty.style.display = 'flex'; return; }
+          empty.style.display = 'none';
+          snap.forEach(function(d) { renderCard(d.id, d.data()); });
+        })
+        .catch(function() { empty.style.display = 'flex'; });
+    }
+
+    function formatDate(ts) {
+      if (!ts) return '';
+      var d = ts.toDate ? ts.toDate() : new Date(ts);
+      return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    }
+
+    function escHtml(s) {
+      return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+
+    function renderCard(id, data) {
+      var grid = document.getElementById('projectGrid');
+      var card = document.createElement('div');
+      card.className = 'proj-card';
+      card.innerHTML =
+        '<div class="proj-header">' +
+          '<div class="proj-icon">' +
+            '<svg width="20" height="20" viewBox="0 0 24 24" fill="none">' +
+              '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>' +
+              '<path d="M14 2v6h6M16 13H8M16 17H8M10 9H8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>' +
+            '</svg>' +
+          '</div>' +
+          '<button class="proj-delete" title="Delete">' +
+            '<svg width="13" height="13" viewBox="0 0 24 24" fill="none">' +
+              '<path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>' +
+            '</svg>' +
+          '</button>' +
+        '</div>' +
+        '<div class="proj-name">' + escHtml(data.name || 'Untitled') + '</div>' +
+        '<div class="proj-date">Modified ' + formatDate(data.updatedAt) + '</div>';
+
+      card.addEventListener('click', function(e) {
+        if (e.target.closest('.proj-delete')) return;
+        sessionStorage.setItem('otter_project_id',   id);
+        sessionStorage.setItem('otter_project_name', data.name || 'Untitled');
+        sessionStorage.setItem('otter_project_code', data.code || '');
+        window.location.href = 'workspace.html';
+      });
+
+      card.querySelector('.proj-delete').addEventListener('click', function(e) {
+        e.stopPropagation();
+        pendingDeleteId = id;
+        document.getElementById('deleteProjectName').textContent = data.name || 'Untitled';
+        showModal('deleteModal');
+      });
+
+      grid.appendChild(card);
+    }
+
+    function createProject() {
+      sessionStorage.removeItem('otter_project_id');
+      sessionStorage.removeItem('otter_project_name');
+      sessionStorage.removeItem('otter_project_code');
+      window.location.href = 'workspace.html';
+    }
+
+    function confirmDelete() {
+      if (!pendingDeleteId) return;
+      db.collection('users').doc(currentUid).collection('projects').doc(pendingDeleteId)
+        .delete()
+        .then(function() {
+          pendingDeleteId = null;
+          hideModal('deleteModal');
+          loadProjects();
+        });
+    }
+
+    function confirmLogout() {
+      hideModal('logoutModal');
+      auth.signOut().then(function() { window.location.href = 'index.html'; });
+    }
+
+    function showLogout() { showModal('logoutModal'); }
+    function showModal(id) { document.getElementById(id).classList.add('show'); }
+    function hideModal(id) { document.getElementById(id).classList.remove('show'); }
+
+    document.addEventListener('click', function(e) {
+      if (e.target.classList.contains('modal-overlay')) e.target.classList.remove('show');
+    });
+  </script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:     #0B0C1A;
+      --card:   #13152B;
+      --border: rgba(255,255,255,0.08);
+      --blue:   #4D7FFF;
+      --text:   #E8EAF6;
+      --muted:  rgba(232,234,246,0.45);
+      --red:    #ef4444;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    body::before {
+      content: '';
+      position: fixed; inset: 0;
+      background-image: radial-gradient(circle, rgba(77,127,255,0.05) 1px, transparent 1px);
+      background-size: 28px 28px;
+      pointer-events: none; z-index: 0;
+    }
+
+    /* ── HEADER ── */
+    .header {
+      position: sticky; top: 0; z-index: 10;
+      background: rgba(11,12,26,0.85);
+      backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--border);
+      height: 60px;
+      display: flex; align-items: center;
+      padding: 0 32px; gap: 12px;
+    }
+
+    .header-logo {
+      display: flex; align-items: center; gap: 9px;
+      text-decoration: none; flex-shrink: 0;
+    }
+    .header-logo img {
+      width: 30px; height: 30px;
+      border-radius: 50%; object-fit: cover;
+    }
+    .header-logo-name {
+      font-size: 14px; font-weight: 700;
+      color: var(--text); letter-spacing: -0.2px;
+    }
+
+    .header-sep {
+      width: 1px; height: 20px;
+      background: var(--border); flex-shrink: 0;
+    }
+
+    .header-title {
+      font-size: 15px; font-weight: 700;
+      color: var(--text); letter-spacing: -0.3px;
+      flex: 1;
+    }
+
+    .btn-create {
+      display: flex; align-items: center; gap: 7px;
+      padding: 8px 18px;
+      background: var(--blue); color: #fff;
+      border: none; border-radius: 9px;
+      font-size: 13px; font-weight: 600;
+      font-family: 'Inter', sans-serif;
+      cursor: pointer;
+      transition: background 0.15s, box-shadow 0.15s;
+      white-space: nowrap;
+    }
+    .btn-create:hover {
+      background: #3a6ef0;
+      box-shadow: 0 4px 16px rgba(77,127,255,0.3);
+    }
+
+    .btn-logout-icon {
+      width: 34px; height: 34px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: transparent;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; color: var(--muted);
+      transition: background 0.15s, color 0.15s, border-color 0.15s;
+      flex-shrink: 0;
+    }
+    .btn-logout-icon:hover {
+      background: rgba(239,68,68,0.1);
+      border-color: rgba(239,68,68,0.3);
+      color: #f87171;
+    }
+
+    /* ── MAIN ── */
+    .main {
+      position: relative; z-index: 1;
+      padding: 32px;
+      max-width: 1280px;
+      margin: 0 auto;
+    }
+
+    /* ── GRID ── */
+    .project-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 14px;
+    }
+    @media (max-width: 1100px) { .project-grid { grid-template-columns: repeat(3, 1fr); } }
+    @media (max-width: 780px)  { .project-grid { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 500px)  { .project-grid { grid-template-columns: 1fr; } }
+
+    /* ── CARD ── */
+    .proj-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 18px;
+      cursor: pointer;
+      display: flex; flex-direction: column; gap: 10px;
+      transition: border-color 0.2s, transform 0.15s, box-shadow 0.2s;
+    }
+    .proj-card:hover {
+      border-color: rgba(77,127,255,0.3);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 28px rgba(0,0,0,0.25);
+    }
+
+    .proj-header {
+      display: flex; align-items: flex-start; justify-content: space-between;
+    }
+
+    .proj-icon {
+      width: 40px; height: 40px;
+      border-radius: 8px;
+      background: rgba(77,127,255,0.1);
+      display: flex; align-items: center; justify-content: center;
+      color: var(--blue);
+      flex-shrink: 0;
+    }
+
+    .proj-delete {
+      width: 26px; height: 26px;
+      border-radius: 6px;
+      border: 1px solid transparent;
+      background: transparent;
+      color: var(--muted);
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s, border-color 0.15s;
+    }
+    .proj-delete:hover {
+      background: rgba(239,68,68,0.1);
+      border-color: rgba(239,68,68,0.2);
+      color: #f87171;
+    }
+
+    .proj-name {
+      font-size: 13.5px; font-weight: 600;
+      color: var(--text);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .proj-date {
+      font-size: 11.5px; color: var(--muted);
+    }
+
+    /* ── EMPTY ── */
+    .empty-state {
+      display: none; flex-direction: column;
+      align-items: center; justify-content: center;
+      padding: 80px 20px; gap: 12px;
+      color: var(--muted); text-align: center;
+    }
+    .empty-state svg { opacity: 0.25; margin-bottom: 4px; }
+    .empty-state h3 { font-size: 16px; font-weight: 600; color: var(--text); }
+    .empty-state p  { font-size: 13px; }
+
+    /* ── MODALS ── */
+    .modal-overlay {
+      display: none; position: fixed; inset: 0; z-index: 100;
+      background: rgba(0,0,0,0.55);
+      backdrop-filter: blur(8px);
+      align-items: center; justify-content: center;
+    }
+    .modal-overlay.show { display: flex; }
+
+    .modal {
+      background: #13152b;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 28px 28px 24px;
+      width: 100%; max-width: 360px; margin: 16px;
+      box-shadow: 0 24px 60px rgba(0,0,0,0.5);
+    }
+    .modal h3 {
+      font-size: 16px; font-weight: 700;
+      letter-spacing: -0.3px; margin-bottom: 7px;
+    }
+    .modal p {
+      font-size: 13px; color: var(--muted);
+      line-height: 1.5; margin-bottom: 22px;
+    }
+    .modal-actions { display: flex; gap: 8px; justify-content: flex-end; }
+
+    .btn-m {
+      padding: 8px 18px;
+      border-radius: 8px;
+      font-size: 13px; font-weight: 600;
+      font-family: 'Inter', sans-serif;
+      cursor: pointer; border: none;
+      transition: opacity 0.15s;
+    }
+    .btn-m:hover { opacity: 0.82; }
+    .btn-ghost  { background: rgba(255,255,255,0.07); color: var(--text); }
+    .btn-danger { background: var(--red); color: #fff; }
+  </style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <a href="index.html" class="header-logo">
+    <img src="logo.png" alt="Otter" onerror="this.style.display='none'" />
+    <span class="header-logo-name">Otter Robotics</span>
+  </a>
+  <div class="header-sep"></div>
+  <div class="header-title">My Projects</div>
+  <button class="btn-create" onclick="createProject()">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+      <path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
+    </svg>
+    Create project
+  </button>
+  <div class="btn-logout-icon" onclick="showLogout()" title="Sign out">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M16 17l5-5-5-5M21 12H9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+  </div>
+</div>
+
+<!-- PROJECTS -->
+<div class="main">
+  <div class="project-grid" id="projectGrid"></div>
+  <div class="empty-state" id="emptyState">
+    <svg width="48" height="48" viewBox="0 0 24 24" fill="none">
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M14 2v6h6M12 18v-6M9 15h6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    <h3>No projects yet</h3>
+    <p>Click "Create project" to write your first sketch</p>
+  </div>
+</div>
+
+<!-- DELETE MODAL -->
+<div class="modal-overlay" id="deleteModal">
+  <div class="modal">
+    <h3>Delete project?</h3>
+    <p>"<span id="deleteProjectName"></span>" will be permanently deleted.</p>
+    <div class="modal-actions">
+      <button class="btn-m btn-ghost" onclick="hideModal('deleteModal')">Cancel</button>
+      <button class="btn-m btn-danger" onclick="confirmDelete()">Delete</button>
+    </div>
+  </div>
+</div>
+
+<!-- LOGOUT MODAL -->
+<div class="modal-overlay" id="logoutModal">
+  <div class="modal">
+    <h3>Sign out?</h3>
+    <p>You will be redirected to the main page.</p>
+    <div class="modal-actions">
+      <button class="btn-m btn-ghost" onclick="hideModal('logoutModal')">Cancel</button>
+      <button class="btn-m btn-danger" onclick="confirmLogout()">Sign out</button>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

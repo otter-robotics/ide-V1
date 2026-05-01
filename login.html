@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Войти — Otter Robotics</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <!-- Firebase compat SDK -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+
+  <script>
+    firebase.initializeApp({
+      apiKey:            "AIzaSyCutLrtPRtwRmMSwOwcfyPIyky4TAoc6Po",
+      authDomain:        "otterroboticsweb.firebaseapp.com",
+      projectId:         "otterroboticsweb",
+      storageBucket:     "otterroboticsweb.firebasestorage.app",
+      messagingSenderId: "874362914334",
+      appId:             "1:874362914334:web:fa40b8ac0b05476a9d500f"
+    });
+
+    var auth = firebase.auth();
+    var PROJECTS_URL = 'projects.html';
+
+    function redirect() {
+      var to = sessionStorage.getItem('otter_redirect') || PROJECTS_URL;
+      sessionStorage.removeItem('otter_redirect');
+      window.location.href = to;
+    }
+
+    auth.onAuthStateChanged(function(user) {
+      if (user) redirect();
+    });
+
+    function handleLogin(e) {
+      e.preventDefault();
+      var btn         = document.getElementById('submitBtn');
+      var emailInput  = document.getElementById('email');
+      var passInput   = document.getElementById('password');
+      var emailErr    = document.getElementById('emailErr');
+      var passErr     = document.getElementById('passwordErr');
+
+      emailErr.textContent = ''; emailErr.style.display = 'none';
+      passErr.textContent  = ''; passErr.style.display  = 'none';
+      emailInput.style.borderColor = '';
+      passInput.style.borderColor  = '';
+
+      var email    = emailInput.value.trim();
+      var password = passInput.value;
+
+      btn.disabled = true;
+      btn.textContent = 'Вход...';
+
+      auth.signInWithEmailAndPassword(email, password)
+        .then(function() { redirect(); })
+        .catch(function(err) {
+          btn.disabled = false;
+          btn.textContent = 'Войти';
+
+          if (err.code === 'auth/invalid-email') {
+            emailInput.style.borderColor = '#ef4444';
+            emailErr.textContent = 'Введите корректный email адрес.';
+            emailErr.style.display = 'block';
+          } else if (err.code === 'auth/user-not-found') {
+            emailInput.style.borderColor = '#ef4444';
+            emailErr.textContent = 'Аккаунт с таким email не найден.';
+            emailErr.style.display = 'block';
+          } else if (err.code === 'auth/wrong-password') {
+            passInput.style.borderColor = '#ef4444';
+            passErr.textContent = 'Неверный пароль. Попробуйте ещё раз.';
+            passErr.style.display = 'block';
+          } else if (err.code === 'auth/invalid-credential') {
+            emailInput.style.borderColor = '#ef4444';
+            passInput.style.borderColor  = '#ef4444';
+            passErr.textContent = 'Неверный email или пароль. Попробуйте ещё раз.';
+            passErr.style.display = 'block';
+          } else if (err.code === 'auth/too-many-requests') {
+            emailInput.style.borderColor = '#ef4444';
+            emailErr.textContent = 'Слишком много попыток. Попробуйте позже.';
+            emailErr.style.display = 'block';
+          } else {
+            passErr.textContent = 'Ошибка входа. Проверьте email и пароль.';
+            passErr.style.display = 'block';
+          }
+        });
+    }
+  </script>
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0B0C1A;
+      --card: #13152B;
+      --border: rgba(255,255,255,0.08);
+      --blue: #4D7FFF;
+      --blue-hover: #3a6ef0;
+      --text: #E8EAF6;
+      --muted: rgba(232,234,246,0.5);
+      --input-bg: rgba(255,255,255,0.05);
+      --input-border: rgba(255,255,255,0.12);
+      --input-focus: rgba(77,127,255,0.4);
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    /* Background dots pattern */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image: radial-gradient(circle, rgba(77,127,255,0.06) 1px, transparent 1px);
+      background-size: 28px 28px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .login-wrapper {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      width: 100%;
+      max-width: 960px;
+      min-height: 560px;
+      border-radius: 24px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      box-shadow: 0 32px 80px rgba(0,0,0,0.5), 0 0 0 1px rgba(77,127,255,0.05);
+      margin: 24px;
+    }
+
+    /* LEFT PANEL — mascot */
+    .login-left {
+      flex: 1;
+      background: linear-gradient(135deg, #0f1129 0%, #141630 50%, #0d1020 100%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 48px 40px;
+      position: relative;
+      overflow: hidden;
+      border-right: 1px solid var(--border);
+    }
+
+    .login-left::before {
+      content: '';
+      position: absolute;
+      width: 320px;
+      height: 320px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(77,127,255,0.12) 0%, transparent 70%);
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+    }
+
+    .mascot-img {
+      width: 240px;
+      height: 240px;
+      object-fit: contain;
+      position: relative;
+      z-index: 1;
+      background: #ffffff;
+      border-radius: 28px;
+      padding: 16px;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.3);
+    }
+
+    .left-tagline {
+      margin-top: 32px;
+      text-align: center;
+      position: relative;
+      z-index: 1;
+    }
+
+    .left-tagline h2 {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--text);
+      letter-spacing: -0.4px;
+      line-height: 1.3;
+      margin-bottom: 8px;
+    }
+
+    .left-tagline p {
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    .blue { color: var(--blue); }
+
+    /* RIGHT PANEL — form */
+    .login-right {
+      flex: 1;
+      background: var(--card);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: 56px 48px;
+    }
+
+    .form-header {
+      margin-bottom: 36px;
+    }
+
+    .form-header h1 {
+      font-size: 26px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      color: var(--text);
+      margin-bottom: 6px;
+    }
+
+    .form-header p {
+      font-size: 14px;
+      color: var(--muted);
+    }
+
+    .form-group {
+      margin-bottom: 18px;
+    }
+
+    .form-group label {
+      display: block;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text);
+      margin-bottom: 8px;
+    }
+
+    .form-group .label-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    .forgot-link {
+      font-size: 13px;
+      color: var(--blue);
+      text-decoration: none;
+      font-weight: 500;
+      transition: opacity 0.15s;
+    }
+
+    .forgot-link:hover { opacity: 0.75; }
+
+    .form-input {
+      width: 100%;
+      background: var(--input-bg);
+      border: 1px solid var(--input-border);
+      border-radius: 10px;
+      padding: 13px 16px;
+      font-size: 14px;
+      font-family: 'Inter', sans-serif;
+      color: var(--text);
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .form-input::placeholder { color: rgba(232,234,246,0.3); }
+
+    .form-input:focus {
+      border-color: var(--blue);
+      box-shadow: 0 0 0 3px var(--input-focus);
+    }
+
+    .btn-login {
+      width: 100%;
+      background: var(--blue);
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      padding: 14px;
+      font-size: 15px;
+      font-weight: 600;
+      font-family: 'Inter', sans-serif;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.1s, box-shadow 0.2s;
+      margin-top: 4px;
+      letter-spacing: -0.1px;
+    }
+
+    .btn-login:hover {
+      background: var(--blue-hover);
+      box-shadow: 0 4px 20px rgba(77,127,255,0.4);
+    }
+
+    .btn-login:active { transform: scale(0.98); }
+
+    .btn-login:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .school-note {
+      margin-top: 28px;
+      padding-top: 24px;
+      border-top: 1px solid var(--border);
+      text-align: center;
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    .school-note a {
+      color: var(--blue);
+      text-decoration: none;
+      font-weight: 500;
+    }
+
+    .school-note a:hover { text-decoration: underline; }
+
+    .field-err {
+      display: none;
+      font-size: 12px;
+      color: #f87171;
+      margin-top: 6px;
+      padding-left: 2px;
+    }
+
+    /* Responsive */
+    @media (max-width: 700px) {
+      .login-left { display: none; }
+      .login-right { padding: 40px 28px; }
+      .login-wrapper { border-radius: 16px; margin: 16px; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="login-wrapper">
+
+  <!-- LEFT: Mascot -->
+  <div class="login-left">
+    <img src="otter-mascot.png" alt="Otter" class="mascot-img" onerror="this.style.opacity='0'" />
+    <div class="left-tagline">
+      <h2>Добро пожаловать в<br /><span class="blue">Otter IDE</span></h2>
+      <p>Программируй настоящего робота<br />прямо из браузера</p>
+    </div>
+  </div>
+
+  <!-- RIGHT: Form -->
+  <div class="login-right">
+    <div class="form-header">
+      <h1>Войти</h1>
+      <p>Введите данные вашего аккаунта</p>
+    </div>
+
+    <form id="loginForm" onsubmit="handleLogin(event)">
+      <div class="form-group">
+        <label for="email">Email</label>
+        <input
+          type="text"
+          id="email"
+          class="form-input"
+          placeholder="you@example.com"
+          autocomplete="email"
+          required
+        />
+        <div class="field-err" id="emailErr"></div>
+      </div>
+
+      <div class="form-group">
+        <div class="label-row">
+          <label for="password">Пароль</label>
+          <a href="#" class="forgot-link">Забыли пароль?</a>
+        </div>
+        <input
+          type="password"
+          id="password"
+          class="form-input"
+          placeholder="Введите пароль"
+          autocomplete="current-password"
+          required
+        />
+        <div class="field-err" id="passwordErr"></div>
+      </div>
+
+      <button type="submit" class="btn-login" id="submitBtn">Войти</button>
+    </form>
+
+    <div class="school-note">
+      Нет аккаунта?&nbsp;<a href="mailto:hello@otterrobotics.kz">Написать нам</a>
+    </div>
+  </div>
+
+</div>
+
+</body>
+</html>
